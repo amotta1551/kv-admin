@@ -1,13 +1,12 @@
-import { Hono } from "https://deno.land/x/hono@v3.4.1/mod.ts";
+import { Hono } from "https://deno.land";
 import { HTTPException } from "https://deno.land/x/hono@v3.12.10/http-exception.ts";
+import type { Context } from "https://deno.land";
 
 const app = new Hono();
 const kv = await Deno.openKv();
 
 // Basic KV operations to support admin interface
-
 // Set a record by key (POST body is JSON)
-// https://pg4e-deno-kv-api-10.deno.dev/kv/set/books/Hamlet?key=123
 app.post("/kv/set/:key{.*}", async (c) => {
   checkToken(c);
   const key = c.req.param("key");
@@ -17,7 +16,6 @@ app.post("/kv/set/:key{.*}", async (c) => {
 });
 
 // Get a record by key
-// https://pg4e-deno-kv-api-10.deno.dev/kv/get/books/Hamlet?key=123
 app.get("/kv/get/:key{.*}", async (c) => {
   checkToken(c);
   const key = c.req.param("key");
@@ -26,16 +24,15 @@ app.get("/kv/get/:key{.*}", async (c) => {
 });
 
 // List records with a key prefix
-// https://pg4e-deno-kv-api-10.deno.dev/kv/list/books
 app.get("/kv/list/:key{.*}", async (c) => {
   checkToken(c);
   const key = c.req.param("key");
   const cursor = c.req.query("cursor");
-  const extra = {'limit': 100};
+  const extra: Record<string, unknown> = {'limit': 100};
   if ( typeof cursor == 'string' && cursor.length > 0 ) {
     extra['cursor'] = cursor;
   }
-  const iter = await kv.list({ prefix: key.split('/') }, extra );
+  const iter = kv.list({ prefix: key.split('/') }, extra );
   const records = [];
   for await (const entry of iter) {
     records.push(entry);
@@ -44,7 +41,6 @@ app.get("/kv/list/:key{.*}", async (c) => {
 });
 
 // Delete a record
-// https://pg4e-deno-kv-api-10.deno.dev/kv/delete/books/Hamlet?key=123
 app.delete("/kv/delete/:key{.*}", async (c) => {
   checkToken(c);
   const key = c.req.param("key");
@@ -53,14 +49,13 @@ app.delete("/kv/delete/:key{.*}", async (c) => {
 });
 
 // Delete a prefix
-// https://pg4e-deno-kv-api-10.deno.dev/kv/delete/books/nonfiction?key=123
 app.delete("/kv/delete_prefix/:key{.*}", async (c) => {
   checkToken(c);
   const key = c.req.param("key");
-  const iter = await kv.list({ prefix: key.split('/') });
+  const iter = kv.list({ prefix: key.split('/') });
   const keys = [];
   for await (const entry of iter) {
-    kv.delete(entry.key);
+    await kv.delete(entry.key);
     keys.push(entry.key);
   }
   console.log("Keys with prefix", key, "deleted:", keys.length);
@@ -68,13 +63,12 @@ app.delete("/kv/delete_prefix/:key{.*}", async (c) => {
 });
 
 // Full database reset
-// https://pg4e-deno-kv-api-10.deno.dev/kv/full_reset_42?key=123
 app.delete("/kv/full_reset_42", async (c) => {
   checkToken(c);
-  const iter = await kv.list({ prefix: [] });
+  const iter = kv.list({ prefix: [] });
   const keys = [];
   for await (const entry of iter) {
-    kv.delete(entry.key);
+    await kv.delete(entry.key);
     keys.push(entry);
   }
   console.log("Database reset keys deleted:", keys.length);
@@ -82,11 +76,8 @@ app.delete("/kv/full_reset_42", async (c) => {
 });
 
 // Dump the request object for learning and debugging
-// https://pg4e-deno-kv-api-10.deno.dev/dump/stuff/goes_here?key=123
 app.all('/dump/*', async (c) => {
   const req = c.req
-
-  // Request details
   const method = req.method
   const url = req.url
   const path = req.path
@@ -95,9 +86,8 @@ app.all('/dump/*', async (c) => {
   for (const [key, value] of req.raw.headers.entries()) {
     headers[key] = value
   }
-
-  // Try to parse body as JSON, otherwise fallback to text
-  let body: any = null
+  
+  let body: unknown = null
   try {
     body = await req.json()
   } catch {
@@ -107,16 +97,7 @@ app.all('/dump/*', async (c) => {
       body = null
     }
   }
-
-  const dump = {
-    method,
-    url,
-    path,
-    headers,
-    query,
-    body,
-  }
-
+  const dump = { method, url, path, headers, query, body }
   return c.json(dump, 200)
 });
 
@@ -129,8 +110,10 @@ app.onError((err, c) => {
 });
 
 // Insure security - The autograder will have you change this value
-function checkToken(c) {
+function checkToken(c: Context) {
   const token = c.req.query("token");
   if ( token == '2610_503d10:67a91a' ) return true;
-  throw new HTTPException(401, { message: 'Missing or invalid token' }); 
+  throw new HTTPException(401, { message: 'Missing or invalid token' });
 }
+
+export default app;
