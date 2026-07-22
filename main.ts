@@ -135,7 +135,7 @@ function checkToken(c) {
   throw new HTTPException(401, { message: 'Missing or invalid token' }); 
 }
 
-//teste
+//teste1
 // If you are putting up your own server you can either delete this
 // CRON entry or change it to be once per month with "0 0 1 * *" as
 // the CRON string
