@@ -1,5 +1,5 @@
 import { Hono } from "https://deno.land";
-import { HTTPException } from "https://deno.land/x/hono@v3.12.10/http-exception.ts";
+import { HTTPException } from "https://deno.land";
 import type { Context } from "https://deno.land";
 
 const app = new Hono();
